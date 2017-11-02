@@ -2,7 +2,7 @@
 
 import time
 import json
-import threading 
+import threading
 
 import memcache
 
@@ -17,17 +17,17 @@ __all__ = [ 'Polaris' ]
 STATE = {}
 # timestamp of the state
 STATE_TS = 0
-# lock for both STATE, STATE_TS sync between Polaris() and StateUpdater() 
-STATE_LOCK = threading.Lock() 
+# lock for both STATE, STATE_TS sync between Polaris() and StateUpdater()
+STATE_LOCK = threading.Lock()
 # how long to sleep after attempting a state update
 STATE_UPDATE_INTERVAL = 0.5
 
 
 class StateUpdater(threading.Thread):
-    
+
     """StateUpdater updates the global distribution state from shared memory
     on a predefined interval.
-    State timestamp only is fetched first, compared to the current timestamp 
+    State timestamp only is fetched first, compared to the current timestamp
     and, if different, full state if fetched and made active.
     """
 
@@ -49,7 +49,7 @@ class StateUpdater(threading.Thread):
             self.update_state()
             time.sleep(STATE_UPDATE_INTERVAL)
 
-    def update_state(self):     
+    def update_state(self):
         # fetch state timestamp
         state_ts = self.sm.get(config.BASE['SHARED_MEM_STATE_TIMESTAMP_KEY'])
 
@@ -81,23 +81,23 @@ class StateUpdater(threading.Thread):
 
 
 class Polaris(RemoteBackend):
-    
+
     """Polaris PDNS remote backend.
 
     Distribute queries according to distribution state and load
     balancing method.
     """
-    
+
     def __init__(self):
         super(Polaris, self).__init__()
 
     def run_additional_startup_tasks(self):
-        """In order for global variables to work correctly 
+        """In order for global variables to work correctly
         between StateUpdater and Polaris RemoteBackend,
         StateUpdater thread must be started not from __init__().
         """
-        # attempt to update state once so we have a state before 
-        # starting to answer queries 
+        # attempt to update state once so we have a state before
+        # starting to answer queries
         StateUpdater().update_state()
 
         # start the StateUpdater as a thread
@@ -148,7 +148,7 @@ class Polaris(RemoteBackend):
         # get a pool associated with the qname
         pool_name = STATE['globalnames'][qname]['pool_name']
         pool = STATE['pools'][pool_name]
-       
+
         # use the _default distribution table by default
         dist_table = pool['dist_tables']['_default']
 
@@ -165,7 +165,7 @@ class Polaris(RemoteBackend):
 
                 # lookup the client's region, get_region() will
                 # return None if the region cannot be determined
-                region = topology.get_region(params['remote'], 
+                region = topology.get_region(params['remote'],
                                              config.TOPOLOGY_MAP)
 
                 # log the time taken to perform the lookup
@@ -175,10 +175,15 @@ class Polaris(RemoteBackend):
                 # log client's region
                 self.log.append('client region: {}'.format(region))
 
-                # if we have a region table corresponding 
+                # if we have a region table corresponding
                 # to the client's region - use it
                 if region in pool['dist_tables']:
                     dist_table = pool['dist_tables'][region]
+                else:
+                    # if we don't have a matching region, then reject if fallback is set to dcrefuse
+                    if pool['fallback'] == 'dcrefuse':
+                        self.result = False
+                        return
 
         ####################
         ### pool is DOWN ###
@@ -197,11 +202,11 @@ class Polaris(RemoteBackend):
                         .format(json.dumps(dist_table)))
 
         # determine how many records to return
-        # which is the minimum of the dist table's num_unique_addrs and 
+        # which is the minimum of the dist table's num_unique_addrs and
         # the pool's max_addrs_returned
-        if dist_table['num_unique_addrs'] <= pool['max_addrs_returned']: 
+        if dist_table['num_unique_addrs'] <= pool['max_addrs_returned']:
             num_records_return = dist_table['num_unique_addrs']
-        else:    
+        else:
             num_records_return = pool['max_addrs_returned']
 
         # if we don't have anything to return(all member weights may have
@@ -214,10 +219,10 @@ class Polaris(RemoteBackend):
         for i in range(num_records_return):
             # add record to the response
             self.add_record(qtype='A',
-                            # use the original qname from the parameters dict        
+                            # use the original qname from the parameters dict
                             qname=params['qname'],
                             content=dist_table['rotation'][dist_table['index']],
-                            ttl=STATE['globalnames'][qname]['ttl'])    
+                            ttl=STATE['globalnames'][qname]['ttl'])
 
             # increase index
             dist_table['index'] += 1
@@ -236,7 +241,7 @@ class Polaris(RemoteBackend):
             self.result = False
             return
 
-        # determine the value of SOA serial, 
+        # determine the value of SOA serial,
         # either static or rounded state's timestamp
         if config.BASE['SOA_SERIAL'] == 'auto':
             serial = int(STATE_TS)
@@ -258,4 +263,3 @@ class Polaris(RemoteBackend):
                         qname=params['qname'],
                         content=content,
                         ttl=config.BASE['SOA_TTL'])
-
