@@ -23,10 +23,10 @@ LOG.addHandler(logging.NullHandler())
 # timeout on control socket so we don't eat CPU in the control loop
 # also affects how often Guardian healthcheck is ran
 CONTROL_SOCKET_TIMEOUT = 0.5
-# control socket recv() buffer size 
+# control socket recv() buffer size
 CONTROL_SOCKET_RECV_BUFF_SIZE = 256
 
-# how often in seconds a heartbeat is written, heartbeat TTL is set to + 4
+# how often in seconds a heartbeat is written, heartbeat TTL is set to + 1
 HEARTBEAT_INTERVAL = 1
 
 # maximum number of times to .terminate() an alive process
@@ -40,8 +40,8 @@ class Guardian:
     """Polaris Guardian
 
     Loads configuration, sets up logging, starts other processes.
-    Starts and periodically healthchecks other processes, if a child processes 
-    dies shutdowns the applicaton.    
+    Starts and periodically healthchecks other processes, if a child processes
+    dies shutdowns the applicaton.
     Listens for control commands on UNIX socket.
     """
 
@@ -59,7 +59,7 @@ class Guardian:
             server_max_value_length=config.BASE['SHARED_MEM_SERVER_MAX_VALUE_LENGTH'])
 
     @staticmethod
-    def load_configuration():        
+    def load_configuration():
         """Load configuration from files"""
         LOG.debug('loading Polaris health configuration')
 
@@ -77,7 +77,7 @@ class Guardian:
             config.BASE['INSTALL_PREFIX'], 'etc', 'polaris-health.yaml')
         if os.path.isfile(base_config_file):
             with open(base_config_file) as fp:
-                base_config = yaml.load(fp)
+                base_config = yaml.safe_load(fp)
 
             if base_config:
                 # validate and set values
@@ -95,7 +95,7 @@ class Guardian:
             config.BASE['INSTALL_PREFIX'], 'run', 'polaris-health.pid')
 
         config.BASE['CONTROL_SOCKET_FILE'] = os.path.join(
-            config.BASE['INSTALL_PREFIX'], 
+            config.BASE['INSTALL_PREFIX'],
             'run', 'polaris-health.controlsocket')
 
         ### load LB configuration ###
@@ -107,14 +107,14 @@ class Guardian:
             raise Error(log_msg)
         else:
             with open(lb_config_file) as fp:
-                config.LB = yaml.load(fp)
+                config.LB = yaml.safe_load(fp)
 
         ### optionally load TOPOLOGY_MAP configuration ###
         topology_config_file = os.path.join(
             config.BASE['INSTALL_PREFIX'], 'etc', 'polaris-topology.yaml')
         if os.path.isfile(topology_config_file):
             with open(topology_config_file) as fp:
-                topology_config = yaml.load(fp)
+                topology_config = yaml.safe_load(fp)
 
             if topology_config:
                 config.TOPOLOGY_MAP = topology.config_to_map(topology_config)
@@ -124,19 +124,19 @@ class Guardian:
 
         polaris_health.config must be loaded prior to calling this.
 
-        If debug is True logging level is set to DEBUG with logs 
+        If debug is True logging level is set to DEBUG with logs
         sent to stdout.
         """
         # setup logging
         if debug:
-            polaris_health.util.log.setup_debug()    
+            polaris_health.util.log.setup_debug()
         else:
             polaris_health.util.log.setup()
 
         LOG.info('starting Polaris health')
 
         # FIXME defining probe queues in __init__() causes Prober process
-        # to fail with EOFError raised when attempting to .get() 
+        # to fail with EOFError raised when attempting to .get()
         # from the request queue
 
         # probe requests are put on this queue by Tracker
@@ -170,14 +170,14 @@ class Guardian:
 
         # If a code between child procs started/exited markers is expected to
         # throw an exception, all the child processes must be terminated
-        # (call self._terminate_child_procs()) prior to exiting 
+        # (call self._terminate_child_procs()) prior to exiting
         # to avoid zombies
 
         ###########################
-        # child processes started # 
+        # child processes started #
         ###########################
 
-        # note the total number of child processes started 
+        # note the total number of child processes started
         self._procs_started = len(self._processes)
 
         # trap SIGTERM to self.sigterm_handler
@@ -230,7 +230,7 @@ class Guardian:
                                'connection processing'
                                .format(e.__class__.__name__, e))
                     LOG.warning(log_msg)
-                               
+
             ### health check the child procs ###
             alive = 0
             for p in self._processes:
@@ -257,8 +257,8 @@ class Guardian:
             if t_now - t_last >= HEARTBEAT_INTERVAL:
                 obj = { 'timestamp': time.time() }
                 val = self._sm.set(config.BASE['SHARED_MEM_HEARTBEAT_KEY'],
-                                   json.dumps(obj), 
-                                   HEARTBEAT_INTERVAL + 4)
+                                   json.dumps(obj),
+                                   HEARTBEAT_INTERVAL + 1)
                 if val is not True:
                     log_msg = 'failed to write heartbeat to the shared memory'
                     LOG.warning(log_msg)
@@ -293,7 +293,7 @@ class Guardian:
         on .terminate(), we attempt to .terminate() it several times.
         """
         LOG.info('terminating {} processes...'.format(len(self._processes)))
- 
+
         i = 0
         while i < MAX_TERMINATE_ATTEMPTS:
             i += 1
@@ -306,11 +306,11 @@ class Guardian:
             # give the processes some time to terminate
             time.sleep(TERMINATE_ATTEMPT_DELAY)
 
-            # if we still have processes running, 
-            # run the termination loop again 
+            # if we still have processes running,
+            # run the termination loop again
             for p in self._processes:
                 if p.is_alive():
-                    LOG.warning('process {} is still running after ' 
+                    LOG.warning('process {} is still running after '
                                 'terminate() attempt {}'.format(p, i))
                     break
             # no processes are alive, exit out
@@ -345,7 +345,7 @@ class Guardian:
             os.remove(config.BASE['PID_FILE'])
         except OSError as e:
             log_msg = ('unable to delete pid file {} - {} {}'
-                       .format(config.BASE['PID_FILE'], 
+                       .format(config.BASE['PID_FILE'],
                                e.__class__.__name__, e))
             LOG.error(log_msg)
             raise Error(log_msg)
@@ -353,7 +353,7 @@ class Guardian:
     def _init_control_socket(self):
         """Initialize the control socket.
 
-        self._control_socket is created and bound 
+        self._control_socket is created and bound
         to config.BASE['CONTROL_SOCKET_FILE']
         """
         # make sure the socket file does not exist
@@ -368,7 +368,7 @@ class Guardian:
             self._control_socket.bind(config.BASE['CONTROL_SOCKET_FILE'])
         except OSError as e:
             log_msg = ('unable to bind control socket {} - {} {}'
-                       .format(config.BASE['CONTROL_SOCKET_FILE'], 
+                       .format(config.BASE['CONTROL_SOCKET_FILE'],
                                e.__class__.__name__, e))
             LOG.error(log_msg)
             raise Error(log_msg)
@@ -390,4 +390,3 @@ class Guardian:
     def _sigterm_handler(self, signo, stack_frame):
         LOG.info('received sig {}'.format(signo))
         self._terminate_child_procs()
-
