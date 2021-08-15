@@ -2,7 +2,7 @@
 
 """Polaris setup
 
-By default will install to /opt/polaris, to install to a different folder 
+By default will install to /opt/polaris, to install to a different folder
 set POLARIS_INSTALL_PREFIX env before running "python3 setup.py install"
 """
 
@@ -20,15 +20,15 @@ def main():
    # setup packages
     setuptools.setup(
         version=VERSION,
-        author='Anton Gavrik',    
+        author='Anton Gavrik',
         name='polaris-gslb',
         description=('An extendable Global Server Load Balancing(GSLB) '
                      'solution, DNS-based traffic manager.'),
         packages = setuptools.find_packages('.'),
         install_requires=[
             'pyyaml',
-            'python-memcached', 
-            'python-daemon-3K'
+            'python-memcached',
+            'python-daemon'
         ],
         license='BSD 3-Clause',
         url='https://github.com/polaris-gslb/polaris-gslb',
@@ -48,12 +48,12 @@ def main():
     # determine the directory where setup.py is located
     pwd = os.path.abspath(
         os.path.split(inspect.getfile(inspect.currentframe()))[0])
- 
+
     print('Creating directory topology...')
-    for path in [ 
+    for path in [
         os.path.join(install_prefix, 'etc'),
         os.path.join(install_prefix, 'bin'),
-        os.path.join(install_prefix, 'run'),        
+        os.path.join(install_prefix, 'run'),
             ]:
         try:
             os.makedirs(path)
@@ -62,7 +62,7 @@ def main():
 
     print('Copying dist configuration and executables...')
     for dirname in [ 'etc', 'bin' ]:
-        copy_files(os.path.join(pwd, dirname), 
+        copy_files(os.path.join(pwd, dirname),
                    os.path.join(install_prefix, dirname))
 
 
@@ -78,10 +78,10 @@ def main():
         f.write('export PATH=$PATH:{}\n'.format(py3_path))
         f.write('export POLARIS_INSTALL_PREFIX={}\n'
                 .format(install_prefix))
-         
+
 
 def copy_files(src_dir, dst_dir):
-    """Copy all files from src_dir to dst_dir""" 
+    """Copy all files from src_dir to dst_dir"""
     src_files = os.listdir(src_dir)
     for file_name in src_files:
         full_file_name = os.path.join(src_dir, file_name)
@@ -91,4 +91,3 @@ def copy_files(src_dir, dst_dir):
 
 if __name__ == '__main__':
     main()
-
