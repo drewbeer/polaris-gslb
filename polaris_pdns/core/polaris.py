@@ -124,7 +124,7 @@ class Polaris(RemoteBackend):
 
             # ANY/A response
             if params['qtype'] in ('ANY', 'A', 'AAAA'):
-                self._any_response(params)
+                self._any_response(params, qname)
                 return
 
             # SOA response
@@ -260,7 +260,7 @@ class Polaris(RemoteBackend):
             for r in ip6[:num_records_return]:
                 self.add_record(**r)
 
-    def _soa_response(self, params):
+    def _soa_response(self, params, qname):
         """Generate a response to a SOA query."""
         # if pool is DOWN and fallback is set to "refuse", refuse SOA queries
         # when both SOA any ANY results in False the pdns will produce a REFUSE
