@@ -77,7 +77,7 @@ class Guardian:
             config.BASE['INSTALL_PREFIX'], 'etc', 'polaris-health.yaml')
         if os.path.isfile(base_config_file):
             with open(base_config_file) as fp:
-                base_config = yaml.load(fp)
+                base_config = yaml.safe_load(fp)
 
             if base_config:
                 # validate and set values
@@ -107,14 +107,14 @@ class Guardian:
             raise Error(log_msg)
         else:
             with open(lb_config_file) as fp:
-                config.LB = yaml.load(fp)
+                config.LB = yaml.safe_load(fp)
 
         ### optionally load TOPOLOGY_MAP configuration ###
         topology_config_file = os.path.join(
             config.BASE['INSTALL_PREFIX'], 'etc', 'polaris-topology.yaml')
         if os.path.isfile(topology_config_file):
             with open(topology_config_file) as fp:
-                topology_config = yaml.load(fp)
+                topology_config = yaml.safe_load(fp)
 
             if topology_config:
                 config.TOPOLOGY_MAP = topology.config_to_map(topology_config)

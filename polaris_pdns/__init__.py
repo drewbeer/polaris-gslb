@@ -31,7 +31,7 @@ def load_configuration():
         config.BASE['INSTALL_PREFIX'], 'etc', 'polaris-pdns.yaml')
     if os.path.isfile(base_config_file):
         with open(base_config_file) as fp:
-            base_config = yaml.load(fp)
+            base_config = yaml.safe_load(fp)
 
         if base_config:
             # validate and set values
@@ -47,7 +47,7 @@ def load_configuration():
         config.BASE['INSTALL_PREFIX'], 'etc', 'polaris-topology.yaml')
     if os.path.isfile(topology_config_file):
         with open(topology_config_file) as fp:
-            topology_config = yaml.load(fp)
+            topology_config = yaml.safe_load(fp)
 
         if topology_config:
             config.TOPOLOGY_MAP = \
