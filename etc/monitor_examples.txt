@@ -1,0 +1,17 @@
+monitor: tcp
+monitor_params:
+  port: 443
+  use_tls: true       # Enable TLS
+  verify_tls: false   # Disable TLS certificate verification
+  timeout: 5
+  match_re: 'https'
+
+
+monitor: external_script
+monitor_params:
+  script_path: "/path/to/your/script.sh"
+  match_re: "success"
+  timeout: 10
+  interval: 60
+  retries: 2
+
